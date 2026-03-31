@@ -1,0 +1,55 @@
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Kurtosis
+.kurtosis/
+
+# Experimental Data
+datasets/*.csv
+datasets/*.json
+datasets/*.txt
+results/
+metrics/
+*.metrics.json
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+config.local.toml
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*~
+
+# Python (for visualization scripts)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+.venv/
+
+# Compiled output
+*.o
+*.so
+*.dylib

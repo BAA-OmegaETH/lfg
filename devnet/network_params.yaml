@@ -1,0 +1,31 @@
+# Ethereum devnet configuration for OmegaETH experiments
+# Focus: Deneb (EIP-4844) blob transactions only
+
+participants:
+  - el_type: geth
+    cl_type: lighthouse
+    vc_type: lighthouse
+    count: 2
+
+network_params:
+  network: "kurtosis"
+  seconds_per_slot: 6
+  slot_duration_ms: 6000
+
+  altair_fork_epoch: 0
+  bellatrix_fork_epoch: 0
+  capella_fork_epoch: 0
+  deneb_fork_epoch: 0
+
+  electra_fork_epoch: 18446744073709551615
+  fulu_fork_epoch: 18446744073709551615
+  gloas_fork_epoch: 18446744073709551615
+
+  num_validator_keys_per_node: 8
+  preregistered_validator_count: 0
+
+  max_payload_size: 10485760
+
+additional_services:
+  - prometheus
+  - grafana

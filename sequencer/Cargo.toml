@@ -1,0 +1,30 @@
+[package]
+name = "omegaeth-sequencer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# EVM execution
+revm = "14.0"
+alloy = { version = "0.6", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# Compression
+zstd = "0.13"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Configuration
+config = "0.14"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
