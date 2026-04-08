@@ -26,7 +26,7 @@ pub struct SequencerConfig {
 impl Default for SequencerConfig {
     fn default() -> Self {
         Self {
-            ordering_policy: "fcfs".to_string(),
+            ordering_policy: std::env::var("ORDERING_POLICY").unwrap_or_else(|_| "fcfs".to_string()),
             des_alpha: 0.33,
             des_beta: 0.33,
             des_gamma: 0.34,

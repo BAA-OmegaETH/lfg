@@ -2,12 +2,12 @@ use crate::types::Batch;
 use anyhow::Result;
 
 pub struct BlobSender {
-    rpc_url: String,
+    _rpc_url: String,
 }
 
 impl BlobSender {
     pub fn new(rpc_url: String) -> Self {
-        Self { rpc_url }
+        Self { _rpc_url: rpc_url }
     }
 
     pub async fn send_blob(&self, batch: &Batch) -> Result<String> {

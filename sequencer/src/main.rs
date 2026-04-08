@@ -33,16 +33,24 @@ async fn main() -> Result<()> {
     let blob_sender = blob_sender::BlobSender::new(config.eth_rpc_url.clone());
     let mut metrics = MetricsCollector::new();
 
-    // Simulate incoming transactions
-    tracing::info!("Generating test transactions...");
-    for i in 0..100 {
-        let tx = UserTx::new(
-            i,
-            1024 * (i % 10 + 1) as usize, // varying sizes
-            if i % 3 == 0 { "transfer" } else { "swap" }.to_string(),
-            1000000,
-        );
-        mempool.add_tx(tx);
+    // Load transactions from the realistic dataset
+    tracing::info!("Loading transactions from dataset...");
+    
+    // We will test the 'mixed' scenario first
+    let contents = std::fs::read_to_string("../mixed.csv")
+        .expect("Failed to read CSV file. Make sure mixed.csv exists in the root folder.");
+    
+    for line in contents.lines().skip(1) { // Skip the CSV header row
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() == 4 {
+            let tx = UserTx::new(
+                parts[0].parse().unwrap(), // tx_id
+                parts[1].parse().unwrap(), // payload_size
+                parts[2].to_string(),      // tx_type
+                parts[3].parse().unwrap(), // arrival_ms
+            );
+            mempool.add_tx(tx);
+        }
     }
 
     tracing::info!("Processing {} transactions", mempool.len());
@@ -80,7 +88,7 @@ async fn main() -> Result<()> {
     }
 
     // Print final metrics
-    metrics.print_summary();
+    metrics.print_summary(config.max_blob_size);
 
     Ok(())
 }
