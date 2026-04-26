@@ -31,7 +31,7 @@ impl Default for SequencerConfig {
             des_beta: 0.33,
             des_gamma: 0.34,
             max_blob_size: 128 * 1024, // 128KB
-            batch_timeout_ms: 1000,
+            batch_timeout_ms: 60_000, // 60 seconds instead of 1 second
             eth_rpc_url: "http://localhost:8545".to_string(),
             sender_private_key: String::new(),
         }

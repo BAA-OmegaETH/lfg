@@ -49,6 +49,7 @@ pub struct DesOrdering {
     beta: f64,
     gamma: f64,
     max_blob_size: usize,
+    batch_timeout_ms: f64,
 }
 
 impl DesOrdering {
@@ -58,12 +59,14 @@ impl DesOrdering {
             beta: config.des_beta,
             gamma: config.des_gamma,
             max_blob_size: config.max_blob_size,
+            batch_timeout_ms: config.batch_timeout_ms as f64,
         }
     }
 
     fn calculate_score(&self, tx: &UserTx, sim_clock_ms: u64, current_batch_size: usize) -> f64 {
         let wait_time = sim_clock_ms.saturating_sub(tx.arrival_ms) as f64;
-        let wait_score = wait_time / 1000.0; // normalize to seconds
+        // Normalize to [0, 1] using the batch window as the maximum expected wait
+        let wait_score = (wait_time / self.batch_timeout_ms).min(1.0);
 
         let compress_score = match tx.tx_type.as_str() {
             "transfer" => 0.9,
