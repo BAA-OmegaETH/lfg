@@ -1,0 +1,79 @@
+﻿
+=== small_heavy | fcfs ===
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 11
+Avg Uncompressed Fill Rate: 28.18%
+Avg Compressed Fill Rate: 31.92%
+Avg Compression Ratio: 0.88:1
+Avg Latency: 30121.93ms
+P95 Latency: 56733ms
+P99 Latency: 59360ms
+Max Latency: 59958ms
+
+=== large_heavy | fcfs ===
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 195
+Avg Uncompressed Fill Rate: 87.17%
+Avg Compressed Fill Rate: 55.86%
+Avg Compression Ratio: 1.56:1
+Avg Latency: 30179.20ms
+P95 Latency: 57108ms
+P99 Latency: 59517ms
+Max Latency: 59999ms
+
+=== mixed | fcfs ===
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 22
+Avg Uncompressed Fill Rate: 71.95%
+Avg Compressed Fill Rate: 53.05%
+Avg Compression Ratio: 1.36:1
+Avg Latency: 29734.38ms
+P95 Latency: 57391ms
+P99 Latency: 59451ms
+Max Latency: 59997ms
+
+=== small_heavy | des ===
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 11
+Avg Uncompressed Fill Rate: 28.18%
+Avg Compressed Fill Rate: 31.94%
+Avg Compression Ratio: 0.88:1
+Avg Latency: 30121.93ms
+P95 Latency: 56733ms
+P99 Latency: 59360ms
+Max Latency: 59958ms
+
+=== large_heavy | des ===
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 61.15%
+Avg Compression Ratio: 1.56:1
+Avg Latency: 30179.20ms
+P95 Latency: 57108ms
+P99 Latency: 59517ms
+Max Latency: 59999ms
+
+=== mixed | des ===
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 22
+Avg Uncompressed Fill Rate: 71.95%
+Avg Compressed Fill Rate: 53.05%
+Avg Compression Ratio: 1.36:1
+Avg Latency: 29734.38ms
+P95 Latency: 57391ms
+P99 Latency: 59451ms
+Max Latency: 59997ms
+

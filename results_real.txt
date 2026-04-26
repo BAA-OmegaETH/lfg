@@ -1,0 +1,27 @@
+﻿
+=== real_full | fcfs ===
+
+=== Metrics Summary ===
+Total Txs: 435250
+Total Blobs: 2122
+Avg Uncompressed Fill Rate: 72.14%
+Avg Compressed Fill Rate: 52.37%
+Avg Compression Ratio: 1.38:1
+Avg Latency: 30868.11ms
+P95 Latency: 57971ms
+P99 Latency: 59648ms
+Max Latency: 59999ms
+
+=== real_full | des ===
+
+=== Metrics Summary ===
+Total Txs: 435250
+Total Blobs: 2096
+Avg Uncompressed Fill Rate: 73.04%
+Avg Compressed Fill Rate: 53.03%
+Avg Compression Ratio: 1.38:1
+Avg Latency: 30868.11ms
+P95 Latency: 57971ms
+P99 Latency: 59648ms
+Max Latency: 59999ms
+

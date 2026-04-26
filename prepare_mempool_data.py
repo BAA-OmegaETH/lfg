@@ -1,7 +1,16 @@
 import csv
+import os
 
-INPUT_FILE = "2025-01-01.csv"
+_HERE = os.path.dirname(os.path.abspath(__file__))
+INPUT_FILE = os.path.join(_HERE, "2025-01-01.csv")
 NUM_TXS = 5000
+
+# Normalize all timestamps to span exactly this duration.
+# With batch_timeout_ms=60s and 10 windows, each window holds ~500 txs on average.
+# large_heavy: 500 txs * 2468 bytes = 1.23MB per window = ~9.6 blobs -> real overflow
+# mixed:       500 txs *  415 bytes = 207KB per window  = ~1.6 blobs -> slight overflow
+# small_heavy: 500 txs *   68 bytes =  34KB per window  = 0.26 blobs -> no overflow (expected)
+TARGET_SPAN_MS = 10 * 60 * 1000  # 10 minutes
 
 SELECTOR_MAP = {
     "0xa9059cbb": "transfer",
@@ -27,45 +36,86 @@ def infer_tx_type(selector):
     return SELECTOR_MAP.get(selector, "other")
 
 def generate(output_file, size_min=1, size_max=None):
-    written = 0
+    # Pass 1: collect matching rows
+    rows = []
     scanned = 0
-
-    with open(INPUT_FILE, newline='') as infile, \
-         open(output_file, 'w', newline='') as outfile:
-
-        reader = csv.DictReader(infile)
-        writer = csv.writer(outfile)
-        writer.writerow(['tx_id', 'payload_size', 'tx_type', 'arrival_ms', 'from', 'nonce'])
-
-        for row in reader:
+    with open(INPUT_FILE, newline='') as infile:
+        for row in csv.DictReader(infile):
             scanned += 1
             data_size = int(row['data_size'])
-
             if data_size < size_min:
                 continue
             if size_max is not None and data_size > size_max:
                 continue
+            rows.append(row)
+            if len(rows) >= NUM_TXS:
+                break
 
+    # Pass 2: normalize timestamps to TARGET_SPAN_MS while preserving relative pattern
+    ts_first = int(rows[0]['timestamp_ms'])
+    ts_last  = int(rows[-1]['timestamp_ms'])
+    actual_span = ts_last - ts_first
+
+    with open(output_file, 'w', newline='') as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(['tx_id', 'payload_size', 'tx_type', 'arrival_ms', 'from', 'nonce'])
+        for i, row in enumerate(rows):
+            raw_ts = int(row['timestamp_ms'])
+            if actual_span > 0:
+                normalized_ts = ts_first + int((raw_ts - ts_first) * TARGET_SPAN_MS / actual_span)
+            else:
+                normalized_ts = ts_first + i  # fallback: sequential
             writer.writerow([
-                written,
-                data_size,
+                i,
+                int(row['data_size']),
+                infer_tx_type(row['data_4bytes']),
+                normalized_ts,
+                row['from'],
+                int(row['nonce']),
+            ])
+
+    print(f"  scanned {scanned} rows, wrote {len(rows)} txs, span {actual_span/1000:.0f}s -> {TARGET_SPAN_MS//1000}s")
+
+def generate_real(output_file):
+    """Write all qualifying rows with real (un-normalized) timestamps."""
+    rows = []
+    scanned = 0
+    with open(INPUT_FILE, newline='') as infile:
+        for row in csv.DictReader(infile):
+            scanned += 1
+            data_size = int(row['data_size'])
+            if data_size < 1:
+                continue
+            rows.append(row)
+
+    with open(output_file, 'w', newline='') as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(['tx_id', 'payload_size', 'tx_type', 'arrival_ms', 'from', 'nonce'])
+        for i, row in enumerate(rows):
+            writer.writerow([
+                i,
+                int(row['data_size']),
                 infer_tx_type(row['data_4bytes']),
                 int(row['timestamp_ms']),
                 row['from'],
                 int(row['nonce']),
             ])
-            written += 1
 
-            if written >= NUM_TXS:
-                break
+    ts_first = int(rows[0]['timestamp_ms'])
+    ts_last  = int(rows[-1]['timestamp_ms'])
+    span_hours = (ts_last - ts_first) / 3_600_000
+    print(f"  scanned {scanned} rows, wrote {len(rows)} txs, span {span_hours:.2f}h (real timestamps)")
 
-    print(f"  scanned {scanned} rows → wrote {written} txs to {output_file}")
+def out(name):
+    return os.path.join(_HERE, name)
 
 print("Generating datasets from 2025-01-01.csv...")
 print("small_heavy  (1-300 bytes):")
-generate("small_heavy.csv",  size_min=1,    size_max=300)
+generate(out("small_heavy.csv"),  size_min=1,    size_max=300)
 print("large_heavy  (>2000 bytes):")
-generate("large_heavy.csv",  size_min=2001, size_max=None)
+generate(out("large_heavy.csv"),  size_min=2001, size_max=None)
 print("mixed        (all sizes with calldata):")
-generate("mixed.csv",        size_min=1,    size_max=None)
+generate(out("mixed.csv"),        size_min=1,    size_max=None)
+print("real_full    (all qualifying rows, real timestamps):")
+generate_real(out("real_full.csv"))
 print("Done.")
