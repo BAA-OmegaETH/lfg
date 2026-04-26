@@ -1,16 +1,46 @@
+use std::collections::HashMap;
+
 use crate::config::SequencerConfig;
 use crate::types::UserTx;
 
 pub trait OrderingPolicy {
-    fn order(&self, txs: Vec<UserTx>) -> Vec<UserTx>;
+    fn order(&self, txs: Vec<UserTx>, sim_clock_ms: u64) -> Vec<UserTx>;
+}
+
+/// Groups txs by sender and sorts each sender's queue by nonce.
+/// This enforces the hard constraint that a sender's txs must execute in nonce order.
+fn build_sender_queues(txs: Vec<UserTx>) -> HashMap<String, Vec<UserTx>> {
+    let mut queues: HashMap<String, Vec<UserTx>> = HashMap::new();
+    for tx in txs {
+        queues.entry(tx.from.clone()).or_default().push(tx);
+    }
+    for queue in queues.values_mut() {
+        queue.sort_by_key(|tx| tx.nonce);
+    }
+    queues
 }
 
 pub struct FcfsOrdering;
 
 impl OrderingPolicy for FcfsOrdering {
-    fn order(&self, mut txs: Vec<UserTx>) -> Vec<UserTx> {
-        txs.sort_by_key(|tx| tx.arrival_ms);
-        txs
+    fn order(&self, txs: Vec<UserTx>, _sim_clock_ms: u64) -> Vec<UserTx> {
+        let mut queues = build_sender_queues(txs);
+        let mut result = Vec::new();
+
+        while queues.values().any(|q| !q.is_empty()) {
+            // Pick the head-of-line tx with the earliest arrival_ms across all senders
+            let best_sender = queues
+                .iter()
+                .filter(|(_, q)| !q.is_empty())
+                .min_by_key(|(_, q)| q[0].arrival_ms)
+                .map(|(s, _)| s.clone())
+                .unwrap();
+
+            let tx = queues.get_mut(&best_sender).unwrap().remove(0);
+            result.push(tx);
+        }
+
+        result
     }
 }
 
@@ -31,11 +61,10 @@ impl DesOrdering {
         }
     }
 
-    fn calculate_score(&self, tx: &UserTx, current_time_ms: u64, current_batch_size: usize) -> f64 {
-        let wait_time = (current_time_ms - tx.arrival_ms) as f64;
+    fn calculate_score(&self, tx: &UserTx, sim_clock_ms: u64, current_batch_size: usize) -> f64 {
+        let wait_time = sim_clock_ms.saturating_sub(tx.arrival_ms) as f64;
         let wait_score = wait_time / 1000.0; // normalize to seconds
 
-        // Simple compression heuristic
         let compress_score = match tx.tx_type.as_str() {
             "transfer" => 0.9,
             "swap" => 0.7,
@@ -43,7 +72,6 @@ impl DesOrdering {
             _ => 0.6,
         };
 
-        // Fit score: how well it fits current batch
         let remaining_space = self.max_blob_size.saturating_sub(current_batch_size);
         let fit_score = if tx.payload_size <= remaining_space && remaining_space > 0 {
             tx.payload_size as f64 / remaining_space as f64
@@ -56,63 +84,58 @@ impl DesOrdering {
 }
 
 impl OrderingPolicy for DesOrdering {
-    fn order(&self, txs: Vec<UserTx>) -> Vec<UserTx> {
-        let current_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
-
-        let mut ordered_txs = Vec::with_capacity(txs.len());
-        let mut unprocessed_txs = txs;
+    fn order(&self, txs: Vec<UserTx>, sim_clock_ms: u64) -> Vec<UserTx> {
+        let mut queues = build_sender_queues(txs);
+        let mut result = Vec::new();
         let mut current_batch_size = 0;
 
-        while !unprocessed_txs.is_empty() {
-            // Find the best transaction strictly among those that fit in the current batch.
-            let best_fit_index = unprocessed_txs
+        while queues.values().any(|q| !q.is_empty()) {
+            // Among head-of-line txs that fit in the current batch, pick the highest score
+            let best_fitting = queues
                 .iter()
-                .enumerate()
-                .filter(|(_, tx)| tx.payload_size + current_batch_size <= self.max_blob_size)
-                .max_by(|(_, a), (_, b)| {
-                    let score_a = self.calculate_score(a, current_time, current_batch_size);
-                    let score_b = self.calculate_score(b, current_time, current_batch_size);
+                .filter(|(_, q)| !q.is_empty())
+                .filter(|(_, q)| q[0].payload_size + current_batch_size <= self.max_blob_size)
+                .max_by(|(_, qa), (_, qb)| {
+                    let score_a = self.calculate_score(&qa[0], sim_clock_ms, current_batch_size);
+                    let score_b = self.calculate_score(&qb[0], sim_clock_ms, current_batch_size);
                     score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
                 })
-                .map(|(i, _)| i);
+                .map(|(s, _)| s.clone());
 
-            if let Some(index) = best_fit_index {
-                // A fitting tx was found. Add it to the batch.
-                let best_tx = unprocessed_txs.remove(index);
-                current_batch_size += best_tx.payload_size;
-                ordered_txs.push(best_tx);
+            if let Some(sender) = best_fitting {
+                let tx = queues.get_mut(&sender).unwrap().remove(0);
+                current_batch_size += tx.payload_size;
+                result.push(tx);
             } else {
-                // No remaining tx fits in the current batch. Start a new batch.
+                // Nothing fits in the current batch — start a new one
                 current_batch_size = 0;
 
-                // Find the best tx for an *empty* batch
-                let best_for_new_batch_index = unprocessed_txs
+                let best_for_new = queues
                     .iter()
-                    .enumerate()
-                    .filter(|(_, tx)| tx.payload_size <= self.max_blob_size) 
-                    .max_by(|(_, a), (_, b)| {
-                        let score_a = self.calculate_score(a, current_time, 0);
-                        let score_b = self.calculate_score(b, current_time, 0);
+                    .filter(|(_, q)| !q.is_empty())
+                    .filter(|(_, q)| q[0].payload_size <= self.max_blob_size)
+                    .max_by(|(_, qa), (_, qb)| {
+                        let score_a = self.calculate_score(&qa[0], sim_clock_ms, 0);
+                        let score_b = self.calculate_score(&qb[0], sim_clock_ms, 0);
                         score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
                     })
-                    .map(|(i, _)| i);
+                    .map(|(s, _)| s.clone());
 
-                if let Some(index) = best_for_new_batch_index {
-                    let best_tx = unprocessed_txs.remove(index);
-                    current_batch_size += best_tx.payload_size;
-                    ordered_txs.push(best_tx);
+                if let Some(sender) = best_for_new {
+                    let tx = queues.get_mut(&sender).unwrap().remove(0);
+                    current_batch_size += tx.payload_size;
+                    result.push(tx);
                 } else {
-                    // Oversized transactions. Append to end.
-                    ordered_txs.append(&mut unprocessed_txs);
+                    // All remaining txs are oversized — append and exit
+                    for queue in queues.values_mut() {
+                        result.append(queue);
+                    }
                     break;
                 }
             }
         }
 
-        ordered_txs
+        result
     }
 }
 

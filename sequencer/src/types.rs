@@ -8,10 +8,12 @@ pub struct UserTx {
     pub tx_type: String,
     pub gas_bid: u64,
     pub data: Vec<u8>,
+    pub from: String,
+    pub nonce: u64,
 }
 
 impl UserTx {
-    pub fn new(tx_id: u64, payload_size: usize, tx_type: String, arrival_ms: u64) -> Self {
+    pub fn new(tx_id: u64, payload_size: usize, tx_type: String, arrival_ms: u64, from: String, nonce: u64) -> Self {
         let mut data = Vec::with_capacity(payload_size);
         
         // Seed a simple pseudo-random generator for deterministic payloads
@@ -53,8 +55,10 @@ impl UserTx {
             arrival_ms,
             payload_size,
             tx_type,
-            gas_bid: 0, // gas_bid is not used in this simulation phase
+            gas_bid: 0,
             data,
+            from,
+            nonce,
         }
     }
 }

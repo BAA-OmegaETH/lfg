@@ -33,58 +33,81 @@ async fn main() -> Result<()> {
     let blob_sender = blob_sender::BlobSender::new(config.eth_rpc_url.clone());
     let mut metrics = MetricsCollector::new();
 
-    // Load transactions from the realistic dataset
+    // Load transactions into a pending queue sorted by arrival time
     tracing::info!("Loading transactions from dataset...");
-    
-    // We will test the 'mixed' scenario first
-    let contents = std::fs::read_to_string("../mixed.csv")
-        .expect("Failed to read CSV file. Make sure mixed.csv exists in the root folder.");
-    
-    for line in contents.lines().skip(1) { // Skip the CSV header row
-        let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() == 4 {
-            let tx = UserTx::new(
-                parts[0].parse().unwrap(), // tx_id
-                parts[1].parse().unwrap(), // payload_size
-                parts[2].to_string(),      // tx_type
-                parts[3].parse().unwrap(), // arrival_ms
-            );
-            mempool.add_tx(tx);
-        }
+
+    let dataset = std::env::var("DATASET").unwrap_or_else(|_| "../mixed.csv".to_string());
+    tracing::info!("Dataset: {}", dataset);
+    let contents = std::fs::read_to_string(&dataset)
+        .unwrap_or_else(|_| panic!("Failed to read dataset file: {}", dataset));
+
+    let mut pending: Vec<UserTx> = contents
+        .lines()
+        .skip(1)
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.split(',').collect();
+            if parts.len() == 6 {
+                Some(UserTx::new(
+                    parts[0].parse().ok()?,
+                    parts[1].parse().ok()?,
+                    parts[2].to_string(),
+                    parts[3].parse().ok()?,
+                    parts[4].to_string(),
+                    parts[5].parse().ok()?,
+                ))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    pending.sort_by_key(|tx| tx.arrival_ms);
+
+    if pending.is_empty() {
+        tracing::warn!("No transactions loaded. Exiting.");
+        return Ok(());
     }
 
-    tracing::info!("Processing {} transactions", mempool.len());
+    tracing::info!("Loaded {} transactions", pending.len());
 
-    // Main sequencer loop
-    while !mempool.is_empty() {
-        // Get transactions from mempool
-        let txs = mempool.get_all();
+    // Virtual clock starts at the first tx's arrival time
+    let mut sim_clock_ms = pending[0].arrival_ms;
+    let mut next_pending = 0;
 
-        // Order transactions
-        let ordered_txs = ordering_policy.order(txs);
-
-        // Execute transactions
-        executor.execute_batch(&ordered_txs)?;
-
-        // Create batches
-        let batches = batcher.create_batches(ordered_txs.clone())?;
-
-        // Send blobs and collect metrics
-        for batch in batches {
-            metrics.record_batch(&batch, config.max_blob_size);
-
-            match blob_sender.send_blob(&batch).await {
-                Ok(tx_hash) => tracing::info!("Blob sent: {}", tx_hash),
-                Err(e) => tracing::error!("Failed to send blob: {}", e),
-            }
-
-            // Remove processed txs
-            let tx_ids: Vec<u64> = batch.txs.iter().map(|tx| tx.tx_id).collect();
-            mempool.remove_txs(&tx_ids);
+    // Main sequencer loop: advance sim_clock one batch window per iteration
+    loop {
+        // Admit all txs that have arrived by sim_clock_ms
+        while next_pending < pending.len() && pending[next_pending].arrival_ms <= sim_clock_ms {
+            mempool.add_tx(pending[next_pending].clone());
+            next_pending += 1;
         }
 
-        // Small delay
-        tokio::time::sleep(tokio::time::Duration::from_millis(config.batch_timeout_ms)).await;
+        if !mempool.is_empty() {
+            let txs = mempool.get_all();
+            let ordered_txs = ordering_policy.order(txs, sim_clock_ms);
+
+            executor.execute_batch(&ordered_txs)?;
+
+            let batches = batcher.create_batches(ordered_txs)?;
+
+            for batch in batches {
+                metrics.record_batch(&batch, sim_clock_ms, config.max_blob_size);
+
+                match blob_sender.send_blob(&batch).await {
+                    Ok(tx_hash) => tracing::info!("Blob sent: {}", tx_hash),
+                    Err(e) => tracing::error!("Failed to send blob: {}", e),
+                }
+
+                let tx_ids: Vec<u64> = batch.txs.iter().map(|tx| tx.tx_id).collect();
+                mempool.remove_txs(&tx_ids);
+            }
+        }
+
+        if next_pending >= pending.len() && mempool.is_empty() {
+            break;
+        }
+
+        sim_clock_ms += config.batch_timeout_ms;
     }
 
     // Print final metrics

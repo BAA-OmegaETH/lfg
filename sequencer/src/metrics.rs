@@ -19,18 +19,15 @@ impl MetricsCollector {
         }
     }
 
-    pub fn record_batch(&mut self, batch: &Batch, _max_blob_size: usize) {
+    pub fn record_batch(&mut self, batch: &Batch, batch_close_time_ms: u64, _max_blob_size: usize) {
         self.total_txs += batch.txs.len();
         self.total_blobs += 1;
 
         self.total_uncompressed_size += batch.total_size;
         self.total_compressed_size += batch.compressed_size;
 
-        // CRITICAL FIX: The "time" the batch is created is the arrival time of its newest transaction
-        let batch_creation_time = batch.txs.iter().map(|tx| tx.arrival_ms).max().unwrap_or(0);
-
         for tx in &batch.txs {
-            let latency = batch_creation_time.saturating_sub(tx.arrival_ms);
+            let latency = batch_close_time_ms.saturating_sub(tx.arrival_ms);
             self.latencies.push(latency);
         }
     }
