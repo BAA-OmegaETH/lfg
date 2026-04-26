@@ -1,79 +1,183 @@
 ﻿
 === small_heavy | fcfs ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=744 window_total=744 blobs=1
+tick=2 admitted=628 window_total=628 blobs=1
+tick=3 admitted=414 window_total=414 blobs=1
+tick=4 admitted=484 window_total=484 blobs=1
+tick=5 admitted=444 window_total=444 blobs=1
+tick=6 admitted=414 window_total=414 blobs=1
+tick=7 admitted=475 window_total=475 blobs=1
+tick=8 admitted=440 window_total=440 blobs=1
+tick=9 admitted=385 window_total=385 blobs=1
+tick=10 admitted=571 window_total=571 blobs=1
 
 === Metrics Summary ===
 Total Txs: 5000
 Total Blobs: 11
 Avg Uncompressed Fill Rate: 28.18%
-Avg Compressed Fill Rate: 31.92%
-Avg Compression Ratio: 0.88:1
+Avg Compressed Fill Rate: 18.17%
+Avg Compression Ratio: 1.55:1
 Avg Latency: 30121.93ms
 P95 Latency: 56733ms
 P99 Latency: 59360ms
 Max Latency: 59958ms
 
+--- Per-Blob Compression Distribution ---
+  Min: 0.88:1  Max: 1.65:1  StdDev: 0.200
+  <1.0:1       1 blobs (  9.1%)
+  1.0-1.5      2 blobs ( 18.2%)
+  1.5-2.0      8 blobs ( 72.7%)
+  2.0-3.0      0 blobs (  0.0%)
+  >3.0:1       0 blobs (  0.0%)
+
 === large_heavy | fcfs ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=22
+tick=2 admitted=504 window_total=504 blobs=21
+tick=3 admitted=418 window_total=418 blobs=18
+tick=4 admitted=440 window_total=440 blobs=17
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=19
+tick=7 admitted=569 window_total=569 blobs=20
+tick=8 admitted=581 window_total=581 blobs=19
+tick=9 admitted=423 window_total=423 blobs=16
+tick=10 admitted=509 window_total=509 blobs=25
 
 === Metrics Summary ===
 Total Txs: 5000
 Total Blobs: 195
 Avg Uncompressed Fill Rate: 87.17%
-Avg Compressed Fill Rate: 55.86%
-Avg Compression Ratio: 1.56:1
-Avg Latency: 30179.20ms
-P95 Latency: 57108ms
-P99 Latency: 59517ms
-Max Latency: 59999ms
+Avg Compressed Fill Rate: 80.18%
+Avg Compression Ratio: 1.09:1
+Avg Latency: 48660.80ms
+P95 Latency: 59612ms
+P99 Latency: 61191ms
+Max Latency: 62616ms
+
+--- Per-Blob Compression Distribution ---
+  Min: 1.06:1  Max: 1.13:1  StdDev: 0.012
+  <1.0:1       0 blobs (  0.0%)
+  1.0-1.5    195 blobs (100.0%)
+  1.5-2.0      0 blobs (  0.0%)
+  2.0-3.0      0 blobs (  0.0%)
+  >3.0:1       0 blobs (  0.0%)
 
 === mixed | fcfs ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=1383 window_total=1383 blobs=5
+tick=2 admitted=930 window_total=930 blobs=3
+tick=3 admitted=967 window_total=967 blobs=4
+tick=4 admitted=845 window_total=845 blobs=3
+tick=5 admitted=874 window_total=874 blobs=4
 
 === Metrics Summary ===
 Total Txs: 5000
-Total Blobs: 22
-Avg Uncompressed Fill Rate: 71.95%
-Avg Compressed Fill Rate: 53.05%
-Avg Compression Ratio: 1.36:1
-Avg Latency: 29734.38ms
-P95 Latency: 57391ms
-P99 Latency: 59451ms
-Max Latency: 59997ms
+Total Blobs: 20
+Avg Uncompressed Fill Rate: 79.15%
+Avg Compressed Fill Rate: 68.41%
+Avg Compression Ratio: 1.16:1
+Avg Latency: 33303.45ms
+P95 Latency: 57586ms
+P99 Latency: 59445ms
+Max Latency: 59998ms
+
+--- Per-Blob Compression Distribution ---
+  Min: 0.99:1  Max: 1.40:1  StdDev: 0.073
+  <1.0:1       1 blobs (  5.0%)
+  1.0-1.5     19 blobs ( 95.0%)
+  1.5-2.0      0 blobs (  0.0%)
+  2.0-3.0      0 blobs (  0.0%)
+  >3.0:1       0 blobs (  0.0%)
 
 === small_heavy | des ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=744 window_total=744 blobs=1
+tick=2 admitted=628 window_total=628 blobs=1
+tick=3 admitted=414 window_total=414 blobs=1
+tick=4 admitted=484 window_total=484 blobs=1
+tick=5 admitted=444 window_total=444 blobs=1
+tick=6 admitted=414 window_total=414 blobs=1
+tick=7 admitted=475 window_total=475 blobs=1
+tick=8 admitted=440 window_total=440 blobs=1
+tick=9 admitted=385 window_total=385 blobs=1
+tick=10 admitted=571 window_total=571 blobs=1
 
 === Metrics Summary ===
 Total Txs: 5000
 Total Blobs: 11
 Avg Uncompressed Fill Rate: 28.18%
-Avg Compressed Fill Rate: 31.94%
-Avg Compression Ratio: 0.88:1
+Avg Compressed Fill Rate: 18.16%
+Avg Compression Ratio: 1.55:1
 Avg Latency: 30121.93ms
 P95 Latency: 56733ms
 P99 Latency: 59360ms
 Max Latency: 59958ms
 
+--- Per-Blob Compression Distribution ---
+  Min: 0.88:1  Max: 1.65:1  StdDev: 0.200
+  <1.0:1       1 blobs (  9.1%)
+  1.0-1.5      2 blobs ( 18.2%)
+  1.5-2.0      8 blobs ( 72.7%)
+  2.0-3.0      0 blobs (  0.0%)
+  >3.0:1       0 blobs (  0.0%)
+
 === large_heavy | des ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
 
 === Metrics Summary ===
 Total Txs: 5000
 Total Blobs: 178
 Avg Uncompressed Fill Rate: 95.50%
-Avg Compressed Fill Rate: 61.15%
-Avg Compression Ratio: 1.56:1
-Avg Latency: 30179.20ms
-P95 Latency: 57108ms
-P99 Latency: 59517ms
-Max Latency: 59999ms
+Avg Compressed Fill Rate: 87.85%
+Avg Compression Ratio: 1.09:1
+Avg Latency: 48170.80ms
+P95 Latency: 61882ms
+P99 Latency: 66152ms
+Max Latency: 75894ms
+
+--- Per-Blob Compression Distribution ---
+  Min: 1.06:1  Max: 1.12:1  StdDev: 0.011
+  <1.0:1       0 blobs (  0.0%)
+  1.0-1.5    178 blobs (100.0%)
+  1.5-2.0      0 blobs (  0.0%)
+  2.0-3.0      0 blobs (  0.0%)
+  >3.0:1       0 blobs (  0.0%)
 
 === mixed | des ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=1383 window_total=1383 blobs=5
+tick=2 admitted=930 window_total=930 blobs=3
+tick=3 admitted=967 window_total=967 blobs=4
+tick=4 admitted=845 window_total=845 blobs=3
+tick=5 admitted=874 window_total=874 blobs=4
 
 === Metrics Summary ===
 Total Txs: 5000
-Total Blobs: 22
-Avg Uncompressed Fill Rate: 71.95%
-Avg Compressed Fill Rate: 53.05%
-Avg Compression Ratio: 1.36:1
-Avg Latency: 29734.38ms
-P95 Latency: 57391ms
-P99 Latency: 59451ms
-Max Latency: 59997ms
+Total Blobs: 20
+Avg Uncompressed Fill Rate: 79.15%
+Avg Compressed Fill Rate: 68.38%
+Avg Compression Ratio: 1.16:1
+Avg Latency: 32969.45ms
+P95 Latency: 57587ms
+P99 Latency: 59467ms
+Max Latency: 61214ms
+
+--- Per-Blob Compression Distribution ---
+  Min: 0.99:1  Max: 1.21:1  StdDev: 0.047
+  <1.0:1       1 blobs (  5.0%)
+  1.0-1.5     19 blobs ( 95.0%)
+  1.5-2.0      0 blobs (  0.0%)
+  2.0-3.0      0 blobs (  0.0%)
+  >3.0:1       0 blobs (  0.0%)
 

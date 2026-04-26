@@ -6,6 +6,7 @@ pub struct MetricsCollector {
     latencies: Vec<u64>,
     total_uncompressed_size: usize,
     total_compressed_size: usize,
+    per_blob_ratios: Vec<f64>,
 }
 
 impl MetricsCollector {
@@ -16,6 +17,7 @@ impl MetricsCollector {
             latencies: Vec::new(),
             total_uncompressed_size: 0,
             total_compressed_size: 0,
+            per_blob_ratios: Vec::new(),
         }
     }
 
@@ -26,16 +28,20 @@ impl MetricsCollector {
         self.total_uncompressed_size += batch.total_size;
         self.total_compressed_size += batch.compressed_size;
 
+        if batch.compressed_size > 0 {
+            let ratio = batch.total_size as f64 / batch.compressed_size as f64;
+            self.per_blob_ratios.push(ratio);
+        }
+
         for tx in &batch.txs {
             let latency = batch_close_time_ms.saturating_sub(tx.arrival_ms);
             self.latencies.push(latency);
         }
     }
 
-    // We use &mut self here to allow sorting the latencies vector in-place
     pub fn get_metrics(&mut self, max_blob_size: usize) -> Metrics {
         let total_possible_uncompressed_size = (self.total_blobs * max_blob_size) as f64;
-        
+
         let avg_uncompressed_fill_rate = if total_possible_uncompressed_size > 0.0 {
             self.total_uncompressed_size as f64 / total_possible_uncompressed_size
         } else {
@@ -99,5 +105,31 @@ impl MetricsCollector {
         println!("P95 Latency: {}ms", metrics.p95_latency_ms);
         println!("P99 Latency: {}ms", metrics.p99_latency_ms);
         println!("Max Latency: {}ms", metrics.max_latency_ms);
+
+        // Per-blob compression breakdown
+        if !self.per_blob_ratios.is_empty() {
+            let n = self.per_blob_ratios.len() as f64;
+            let mean = self.per_blob_ratios.iter().sum::<f64>() / n;
+            let variance = self.per_blob_ratios.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / n;
+            let stddev = variance.sqrt();
+            let min = self.per_blob_ratios.iter().cloned().fold(f64::INFINITY, f64::min);
+            let max = self.per_blob_ratios.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+
+            // Histogram: <1.0, 1.0-1.5, 1.5-2.0, 2.0-3.0, >3.0
+            let buckets = [
+                ("<1.0:1",   self.per_blob_ratios.iter().filter(|&&r| r < 1.0).count()),
+                ("1.0-1.5", self.per_blob_ratios.iter().filter(|&&r| r >= 1.0 && r < 1.5).count()),
+                ("1.5-2.0", self.per_blob_ratios.iter().filter(|&&r| r >= 1.5 && r < 2.0).count()),
+                ("2.0-3.0", self.per_blob_ratios.iter().filter(|&&r| r >= 2.0 && r < 3.0).count()),
+                (">3.0:1",  self.per_blob_ratios.iter().filter(|&&r| r >= 3.0).count()),
+            ];
+
+            println!("\n--- Per-Blob Compression Distribution ---");
+            println!("  Min: {:.2}:1  Max: {:.2}:1  StdDev: {:.3}", min, max, stddev);
+            for (label, count) in &buckets {
+                let pct = *count as f64 / n * 100.0;
+                println!("  {:8}  {:4} blobs ({:5.1}%)", label, count, pct);
+            }
+        }
     }
 }
