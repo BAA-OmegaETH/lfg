@@ -75,23 +75,38 @@ async fn main() -> Result<()> {
     let mut next_pending = 0;
 
     // Main sequencer loop: advance sim_clock one batch window per iteration
+    let verbose = std::env::var("VERBOSE").unwrap_or_default() == "1";
+    let mut tick = 0u64;
+
     loop {
         // Admit all txs that have arrived by sim_clock_ms
+        let admitted_before = mempool.get_all().len();
         while next_pending < pending.len() && pending[next_pending].arrival_ms <= sim_clock_ms {
             mempool.add_tx(pending[next_pending].clone());
             next_pending += 1;
         }
+        let txs_admitted = mempool.get_all().len() - admitted_before;
 
         if !mempool.is_empty() {
             let txs = mempool.get_all();
+            let txs_in_window = txs.len();
             let ordered_txs = ordering_policy.order(txs, sim_clock_ms);
 
             executor.execute_batch(&ordered_txs)?;
 
             let batches = batcher.create_batches(ordered_txs)?;
+            let blobs_this_tick = batches.len();
 
-            for batch in batches {
-                metrics.record_batch(&batch, sim_clock_ms, config.max_blob_size);
+            if verbose {
+                println!(
+                    "tick={} admitted={} window_total={} blobs={}",
+                    tick, txs_admitted, txs_in_window, blobs_this_tick
+                );
+            }
+
+            for (blob_index, batch) in batches.iter().enumerate() {
+                let blob_close_time_ms = sim_clock_ms + (blob_index as u64 * config.blob_submission_delay_ms);
+                metrics.record_batch(batch, blob_close_time_ms, config.max_blob_size);
 
                 match blob_sender.send_blob(&batch).await {
                     Ok(tx_hash) => tracing::info!("Blob sent: {}", tx_hash),
@@ -107,6 +122,7 @@ async fn main() -> Result<()> {
             break;
         }
 
+        tick += 1;
         sim_clock_ms += config.batch_timeout_ms;
     }
 

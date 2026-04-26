@@ -50,12 +50,11 @@ impl Batcher {
     }
 
     fn compress_batch(&self, txs: &[UserTx]) -> Result<usize> {
-        // Serialize txs
-        let serialized = serde_json::to_vec(txs)?;
-
-        // Compress using zstd
-        let compressed = zstd::encode_all(&serialized[..], 3)?;
-
+        let mut combined_data = Vec::new();
+        for tx in txs {
+            combined_data.extend_from_slice(&tx.data);
+        }
+        let compressed = zstd::encode_all(&combined_data[..], 3)?;
         Ok(compressed.len())
     }
 }

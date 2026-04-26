@@ -14,9 +14,24 @@ pub struct UserTx {
 
 impl UserTx {
     pub fn new(tx_id: u64, payload_size: usize, tx_type: String, arrival_ms: u64, from: String, nonce: u64) -> Self {
-        let mut data = Vec::with_capacity(payload_size);
-        
-        // Seed a simple pseudo-random generator for deterministic payloads
+        let data = Self::generate_typed_data(tx_id, arrival_ms, payload_size, &tx_type);
+        Self { tx_id, arrival_ms, payload_size, tx_type, gas_bid: 0, data, from, nonce }
+    }
+
+    fn generate_typed_data(tx_id: u64, arrival_ms: u64, payload_size: usize, tx_type: &str) -> Vec<u8> {
+        // Zero-byte density models real Ethereum ABI calldata compressibility per tx type.
+        // Higher zero density → more compressible → matches compress_score ordering.
+        //   transfer: address(12B zeros+20B) + uint256(28B zeros+4B) → ~75% zeros → 4-6:1 zstd
+        //   mint:     similar ABI structure, slightly more varied        → ~60% zeros → 3-4:1 zstd
+        //   swap:     path arrays + multi-param → complex, fewer zeros  → ~35% zeros → 2-3:1 zstd
+        //   other:    unstructured calldata                              → ~15% zeros → ~1.5:1 zstd
+        let zero_density: f64 = match tx_type {
+            "transfer" => 0.75,
+            "mint"     => 0.60,
+            "swap"     => 0.35,
+            _          => 0.15,
+        };
+
         let mut rng_state = tx_id.wrapping_add(arrival_ms).wrapping_add(1);
         let mut next_random = || -> u8 {
             rng_state ^= rng_state << 13;
@@ -25,41 +40,28 @@ impl UserTx {
             (rng_state % 256) as u8
         };
 
-        // 1. Simulate an Ethereum Function Selector (First 4 bytes)
+        let mut data = Vec::with_capacity(payload_size);
+
+        // First 4 bytes: function selector (always non-zero)
         for _ in 0..4.min(payload_size) {
-            data.push(next_random());
+            let b = next_random();
+            data.push(if b == 0 { 1 } else { b });
         }
 
-        // 2. Build the rest of the payload using 32-byte ABI encoded words
+        // Remaining bytes: type-correlated zero density
         while data.len() < payload_size {
-            let remaining = payload_size - data.len();
-            if remaining >= 32 {
-                // Flip a coin: Is this an Address or a Uint256 amount?
-                if next_random() % 2 == 0 {
-                    // Simulate an Address (12 bytes of zero padding + 20 bytes of random address)
-                    for _ in 0..12 { data.push(0); }
-                    for _ in 0..20 { data.push(next_random()); }
-                } else {
-                    // Simulate a Uint256 Token Amount (28 bytes of zero padding + 4 bytes of random value)
-                    for _ in 0..28 { data.push(0); }
-                    for _ in 0..4 { data.push(next_random()); }
-                }
+            // Use 256 thresholds to avoid float ops in the hot path
+            let threshold = (zero_density * 256.0) as u8;
+            let probe = next_random();
+            if probe < threshold {
+                data.push(0);
             } else {
-                // Fill the remaining tail with random bytes (simulating a signature or other data)
-                data.push(next_random());
+                let b = next_random();
+                data.push(if b == 0 { 1 } else { b }); // ensure non-zero
             }
         }
 
-        Self {
-            tx_id,
-            arrival_ms,
-            payload_size,
-            tx_type,
-            gas_bid: 0,
-            data,
-            from,
-            nonce,
-        }
+        data
     }
 }
 

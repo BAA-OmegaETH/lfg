@@ -68,12 +68,10 @@ impl DesOrdering {
         // Normalize to [0, 1] using the batch window as the maximum expected wait
         let wait_score = (wait_time / self.batch_timeout_ms).min(1.0);
 
-        let compress_score = match tx.tx_type.as_str() {
-            "transfer" => 0.9,
-            "swap" => 0.7,
-            "mint" => 0.5,
-            _ => 0.6,
-        };
+        // Compress score: smaller txs have simpler ABI structure (more zero-padding) and
+        // compress better. 10,000 bytes is chosen as the practical upper bound for calldata
+        // in this dataset; score is clamped to [0.1, 1.0].
+        let compress_score = (1.0 - (tx.payload_size as f64 / 10_000.0)).clamp(0.1, 1.0);
 
         let remaining_space = self.max_blob_size.saturating_sub(current_batch_size);
         let fit_score = if tx.payload_size <= remaining_space && remaining_space > 0 {
