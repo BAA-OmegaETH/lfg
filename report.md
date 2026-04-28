@@ -152,6 +152,14 @@ Table 1 shows the primary comparison across all three workloads (5,000 transacti
 
 **Latency trade-off:** On large_heavy, DES increases P95 latency from 59,612 ms to 61,882 ms (+3.8%) and max latency from 62,616 ms to 75,894 ms (+21.2%). This is the HOL-blocking cost: large transactions that are repeatedly deferred because they don't fit in the current tail blob accumulate wait time.
 
+**Figure 1 (results_chart2.png) — Reading guide:**
+
+Figure 1 visualizes the data in Table 1 across four panels. Two aspects require careful interpretation:
+
+*Avg Scheduling Latency panel:* The chart shows DES at 48s vs FCFS at 49s on large_heavy, making DES appear slightly better on latency. This is an artifact of averaging. Because DES packs fewer, denser blobs, transactions that land in early blobs get marginally lower individual latencies — pulling the average down slightly. However, the transactions that DES defers (because they don't fit in the current blob tail) accumulate high wait times, reflected in the max latency jumping from 62.6s to 75.9s. **The average latency hides the real latency cost of DES; the tail latency (P95, max) is the honest measure.**
+
+*Blob Savings panel:* small_heavy and mixed show "No overflow (0% savings)". This requires understanding what overflow means in this context. Overflow does not refer to the mempool being full — it refers to **blob overflow**: the total size of transactions in a 60-second window exceeding one blob's 128 KB capacity. small_heavy txs are tiny (~68 B each), so 500 txs/window = ~34 KB total, which fits in one blob with room to spare. Without blob overflow, there are no blob boundary decisions to optimize, so FCFS and DES produce identical results.
+
 ### 4.2 DES Parameter Sweep
 
 Table 2 shows the effect of α/β/γ weight configurations on the large_heavy workload:
@@ -180,13 +188,23 @@ Experiments on the lh_low/medium/high datasets demonstrate that DES savings scal
 
 | Dataset | Span | FCFS Blobs | DES Blobs | Reduction |
 |---------|------|------------|-----------|-----------|
-| lh_low | 30 min | ~130 | ~115 | ~11.5% |
+| lh_low | 30 min | 208 | 184 | 11.5% |
 | lh_medium | 10 min | 195 | 178 | 8.7% |
-| lh_high | 3 min | ~450 | ~390 | ~13.3% |
+| lh_high | 3 min | 192 | 174 | 9.4% |
 
 Higher overflow intensity (more transactions per window) increases the frequency of blob boundary decisions, giving DES more opportunities to reorder across blob boundaries.
 
-Notably, lh_low shows higher percentage savings (11.5%) than lh_medium (8.7%) despite lower per-window overflow. This is because a 30-minute span produces more windows (30 vs 10), and each window's blob tail represents a separate optimization opportunity.
+Notably, lh_low shows higher percentage savings (11.5%) than lh_medium (8.7%) despite lower per-window overflow. This is because a 30-minute span produces more windows than a 10-minute span, and each window's blob tail represents a separate optimization opportunity — more windows means more boundary decisions in total.
+
+**Figure 2 (results_chart.png) — Reading guide:**
+
+Figure 2 visualizes the lh sweep across four panels. Two aspects require careful interpretation:
+
+*What this experiment isolates:* All three datasets (lh_low, lh_medium, lh_high) use the exact same 5,000 large transactions (>2,000 B). The only variable changed is the time span into which those transactions are compressed — 30 minutes, 10 minutes, or 3 minutes. A shorter span means more transactions arrive per 60-second window, producing more blob overflow per window. This is a **controlled experiment** designed to isolate overflow intensity as a single variable.
+
+*How this differs from real-world traffic:* The lh datasets filter exclusively to large calldata transactions (>2,000 B). Real Ethereum mempool traffic is dominated by small ERC-20 transfers and DEX swaps averaging ~350 B. The lh sweep therefore represents a best-case scenario for DES — a specialized workload where both conditions for DES savings (blob overflow + large tx size variance) are always satisfied. The real_full dataset in section 4.4, which uses unfiltered real timestamps and all tx sizes, shows the contrast: minimal DES savings because real traffic is small-tx dominated.
+
+*Avg Scheduling Latency panel:* At lh_high (3-minute span), latency rises significantly for both policies (FCFS: 50s, DES: 50s at avg, but DES tail reaches 91s vs FCFS ~65s). The very dense windows at lh_high mean many transactions wait multiple ticks before being included, raising average latency for both policies. DES again hides its tail cost in the average — the raw numbers show DES max latency considerably exceeds FCFS max latency at lh_high.
 
 ### 4.4 Real Mempool Dataset
 
@@ -216,7 +234,21 @@ The weights are latency controls: they determine how long a transaction waits be
 
 Our experiments show that zstd compression has asymmetric value depending on tx type. Small token transfer calldata (repetitive ABI-encoded addresses and amounts) compresses at 1.55:1. Large DEX swap calldata (variable-length paths, unique pool parameters) compresses at only 1.09:1 — nearly incompressible. The β (compress_score) weight therefore has limited practical impact on large-transaction workloads: the variation in compressibility within a window is too small to differentiate candidates meaningfully.
 
-### 5.4 Latency–Cost Trade-off
+### 5.4 Interpreting the Two Experiment Charts
+
+The two result charts answer fundamentally different questions and must be read together to understand the full picture.
+
+**Figure 1 (results_chart2.png) — "Does workload type matter?"**
+This chart varies the transaction size profile while holding everything else constant (5,000 txs, 60s window, same overflow intensity target). It establishes the **necessary conditions** for DES to help: blob overflow must occur AND transaction sizes must vary enough to create meaningful blob boundary decisions. The chart shows that on typical real-world traffic (small txs, no overflow) DES produces zero savings. On large-tx workloads with overflow, DES saves 8.7%.
+
+**Figure 2 (results_chart.png) — "If conditions are met, does more overflow help?"**
+This chart holds the transaction type constant (all large txs >2,000 B, DES-favorable conditions always met) and varies only overflow intensity. It answers a follow-up question: assuming DES already helps, does heavier traffic make it help more? The answer is roughly yes — savings range from 8.7% to 11.5% across the sweep.
+
+**The key limitation of Figure 2:** Because the lh datasets are filtered to large txs only, they represent an artificially favorable scenario. A real L2 under the same traffic density would have mixed tx sizes, likely showing savings closer to the mixed workload result (near 0%) unless the traffic is specifically dominated by large calldata transactions.
+
+**Together, the two charts tell a complete story:** DES is not universally better than FCFS. It is a conditional improvement that activates only when a specific traffic profile is present — and when active, its magnitude scales modestly with overflow intensity.
+
+### 5.5 Latency–Cost Trade-off
 
 DES introduces a trade-off: it reduces blob count (and therefore blob fee cost) at the expense of increased tail latency. On large_heavy:
 
