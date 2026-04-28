@@ -7,6 +7,7 @@ pub struct MetricsCollector {
     total_uncompressed_size: usize,
     total_compressed_size: usize,
     per_blob_ratios: Vec<f64>,
+    inclusion_latencies_ms: Vec<u64>,
 }
 
 impl MetricsCollector {
@@ -18,6 +19,7 @@ impl MetricsCollector {
             total_uncompressed_size: 0,
             total_compressed_size: 0,
             per_blob_ratios: Vec::new(),
+            inclusion_latencies_ms: Vec::new(),
         }
     }
 
@@ -36,6 +38,12 @@ impl MetricsCollector {
         for tx in &batch.txs {
             let latency = batch_close_time_ms.saturating_sub(tx.arrival_ms);
             self.latencies.push(latency);
+        }
+    }
+
+    pub fn record_inclusion(&mut self, inclusion_latency_ms: u64) {
+        if inclusion_latency_ms > 0 {
+            self.inclusion_latencies_ms.push(inclusion_latency_ms);
         }
     }
 
@@ -105,6 +113,18 @@ impl MetricsCollector {
         println!("P95 Latency: {}ms", metrics.p95_latency_ms);
         println!("P99 Latency: {}ms", metrics.p99_latency_ms);
         println!("Max Latency: {}ms", metrics.max_latency_ms);
+
+        if !self.inclusion_latencies_ms.is_empty() {
+            let n = self.inclusion_latencies_ms.len();
+            let avg = self.inclusion_latencies_ms.iter().sum::<u64>() as f64 / n as f64;
+            let mut sorted = self.inclusion_latencies_ms.clone();
+            sorted.sort_unstable();
+            let p50 = sorted[n / 2];
+            let max = *sorted.last().unwrap();
+            println!("\n--- Blob Inclusion Latency (on-chain) ---");
+            println!("  Blobs submitted: {}", n);
+            println!("  Avg: {:.0}ms  P50: {}ms  Max: {}ms", avg, p50, max);
+        }
 
         // Per-blob compression breakdown
         if !self.per_blob_ratios.is_empty() {

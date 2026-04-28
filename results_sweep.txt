@@ -1,0 +1,216 @@
+﻿
+=== DES large_heavy | a=1.00 b=0.00 g=0.00 (pure_wait) ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 39.51%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 46543.20ms
+P95 Latency: 58376ms
+P99 Latency: 59752ms
+Max Latency: 60616ms
+
+=== DES large_heavy | a=0.00 b=1.00 g=0.00 (pure_compress) ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 39.51%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 44618.40ms
+P95 Latency: 79997ms
+P99 Latency: 89446ms
+Max Latency: 99248ms
+
+=== DES large_heavy | a=0.00 b=0.00 g=1.00 (pure_fit) ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 39.50%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 53751.60ms
+P95 Latency: 84101ms
+P99 Latency: 91669ms
+Max Latency: 101528ms
+
+=== DES large_heavy | a=0.33 b=0.33 g=0.34 (equal (default)) ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 39.51%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 51920.00ms
+P95 Latency: 68625ms
+P99 Latency: 70944ms
+Max Latency: 73906ms
+
+=== DES large_heavy | a=0.50 b=0.25 g=0.25 (wait_heavy) ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 39.52%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 50292.80ms
+P95 Latency: 64067ms
+P99 Latency: 65830ms
+Max Latency: 67885ms
+
+=== DES large_heavy | a=0.25 b=0.25 g=0.50 (fit_heavy) ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 39.51%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 52463.20ms
+P95 Latency: 70286ms
+P99 Latency: 73164ms
+Max Latency: 76476ms
+
+=== DES large_heavy | a=0.25 b=0.50 g=0.25 (compress_heavy) ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 39.52%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 51776.40ms
+P95 Latency: 68773ms
+P99 Latency: 71139ms
+Max Latency: 73906ms
+
+=== DES large_heavy | a=0.00 b=0.50 g=0.50 (no_wait) ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=21
+tick=2 admitted=504 window_total=504 blobs=19
+tick=3 admitted=418 window_total=418 blobs=15
+tick=4 admitted=440 window_total=440 blobs=15
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=17
+tick=7 admitted=569 window_total=569 blobs=18
+tick=8 admitted=581 window_total=581 blobs=18
+tick=9 admitted=423 window_total=423 blobs=14
+tick=10 admitted=509 window_total=509 blobs=23
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 178
+Avg Uncompressed Fill Rate: 95.50%
+Avg Compressed Fill Rate: 39.51%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 53195.60ms
+P95 Latency: 83465ms
+P99 Latency: 90820ms
+Max Latency: 101528ms
+
+=== FCFS large_heavy | baseline ===
+tick=0 admitted=1 window_total=1 blobs=1
+tick=1 admitted=665 window_total=665 blobs=22
+tick=2 admitted=504 window_total=504 blobs=21
+tick=3 admitted=418 window_total=418 blobs=18
+tick=4 admitted=440 window_total=440 blobs=17
+tick=5 admitted=452 window_total=452 blobs=17
+tick=6 admitted=438 window_total=438 blobs=19
+tick=7 admitted=569 window_total=569 blobs=20
+tick=8 admitted=581 window_total=581 blobs=19
+tick=9 admitted=423 window_total=423 blobs=16
+tick=10 admitted=509 window_total=509 blobs=25
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 195
+Avg Uncompressed Fill Rate: 87.17%
+Avg Compressed Fill Rate: 36.08%
+Avg Compression Ratio: 2.42:1
+Avg Latency: 48658.00ms
+P95 Latency: 59596ms
+P99 Latency: 61191ms
+Max Latency: 62616ms

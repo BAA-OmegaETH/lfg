@@ -30,7 +30,10 @@ async fn main() -> Result<()> {
     let ordering_policy = create_ordering_policy(&config);
     let mut executor = executor::Executor::new();
     let batcher = batcher::Batcher::new(&config);
-    let blob_sender = blob_sender::BlobSender::new(config.eth_rpc_url.clone());
+    let blob_sender = blob_sender::BlobSender::new(
+        std::env::var("ETH_RPC_URL").unwrap_or_else(|_| config.eth_rpc_url.clone()),
+        std::env::var("SENDER_PRIVATE_KEY").unwrap_or_else(|_| config.sender_private_key.clone()),
+    );
     let mut metrics = MetricsCollector::new();
 
     // Load transactions into a pending queue sorted by arrival time
@@ -109,7 +112,10 @@ async fn main() -> Result<()> {
                 metrics.record_batch(batch, blob_close_time_ms, config.max_blob_size);
 
                 match blob_sender.send_blob(&batch).await {
-                    Ok(tx_hash) => tracing::info!("Blob sent: {}", tx_hash),
+                    Ok((tx_hash, inclusion_ms)) => {
+                        tracing::info!("Blob sent: {}", tx_hash);
+                        metrics.record_inclusion(inclusion_ms);
+                    }
                     Err(e) => tracing::error!("Failed to send blob: {}", e),
                 }
 

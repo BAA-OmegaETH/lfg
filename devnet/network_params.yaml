@@ -2,7 +2,7 @@
 # Focus: Deneb (EIP-4844) blob transactions only
 
 participants:
-  - el_type: geth
+  - el_type: reth
     cl_type: lighthouse
     vc_type: lighthouse
     count: 2

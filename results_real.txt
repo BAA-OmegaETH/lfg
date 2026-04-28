@@ -2907,3 +2907,13 @@ P95 Latency: 58627ms
 P99 Latency: 61486ms
 Max Latency: 85792ms
 
+=== Metrics Summary ===
+Total Txs: 435250
+Total Blobs: 2122
+Avg Uncompressed Fill Rate: 72.14%
+Avg Compressed Fill Rate: 30.78%
+Avg Compression Ratio: 2.34:1
+Avg Latency: 31846.68ms
+P95 Latency: 58611ms
+P99 Latency: 61485ms
+Max Latency: 85776ms
