@@ -95,6 +95,11 @@ async fn main() -> Result<()> {
             let txs_in_window = txs.len();
             let ordered_txs = ordering_policy.order(txs, sim_clock_ms);
 
+            // Record ordering latency: how long each tx waited until selected by the algo.
+            // Window start is one batch_timeout before the current clock.
+            let window_start_ms = sim_clock_ms.saturating_sub(config.batch_timeout_ms);
+            metrics.record_ordering_latencies(&ordered_txs, window_start_ms, config.batch_timeout_ms);
+
             executor.execute_batch(&ordered_txs)?;
 
             let batches = batcher.create_batches(ordered_txs)?;
@@ -107,9 +112,8 @@ async fn main() -> Result<()> {
                 );
             }
 
-            for (blob_index, batch) in batches.iter().enumerate() {
-                let blob_close_time_ms = sim_clock_ms + (blob_index as u64 * config.blob_submission_delay_ms);
-                metrics.record_batch(batch, blob_close_time_ms, config.max_blob_size);
+            for batch in batches.iter() {
+                metrics.record_batch(batch, config.max_blob_size);
 
                 match blob_sender.send_blob(&batch).await {
                     Ok((tx_hash, inclusion_ms)) => {

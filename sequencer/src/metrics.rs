@@ -3,11 +3,11 @@ use crate::types::{Batch, Metrics};
 pub struct MetricsCollector {
     total_txs: usize,
     total_blobs: usize,
-    latencies: Vec<u64>,
     total_uncompressed_size: usize,
     total_compressed_size: usize,
     per_blob_ratios: Vec<f64>,
     inclusion_latencies_ms: Vec<u64>,
+    ordering_latencies_ms: Vec<u64>,
 }
 
 impl MetricsCollector {
@@ -15,15 +15,15 @@ impl MetricsCollector {
         Self {
             total_txs: 0,
             total_blobs: 0,
-            latencies: Vec::new(),
             total_uncompressed_size: 0,
             total_compressed_size: 0,
             per_blob_ratios: Vec::new(),
             inclusion_latencies_ms: Vec::new(),
+            ordering_latencies_ms: Vec::new(),
         }
     }
 
-    pub fn record_batch(&mut self, batch: &Batch, batch_close_time_ms: u64, _max_blob_size: usize) {
+    pub fn record_batch(&mut self, batch: &Batch, _max_blob_size: usize) {
         self.total_txs += batch.txs.len();
         self.total_blobs += 1;
 
@@ -34,11 +34,6 @@ impl MetricsCollector {
             let ratio = batch.total_size as f64 / batch.compressed_size as f64;
             self.per_blob_ratios.push(ratio);
         }
-
-        for tx in &batch.txs {
-            let latency = batch_close_time_ms.saturating_sub(tx.arrival_ms);
-            self.latencies.push(latency);
-        }
     }
 
     pub fn record_inclusion(&mut self, inclusion_latency_ms: u64) {
@@ -47,7 +42,29 @@ impl MetricsCollector {
         }
     }
 
-    pub fn get_metrics(&mut self, max_blob_size: usize) -> Metrics {
+    /// Records ordering latency for each tx: time from tx arrival until it was
+    /// selected by the ordering algorithm and placed into a blob position.
+    /// selection_index is the tx's position in the ordered output (0 = selected first).
+    /// window_start_ms and batch_timeout_ms are used to spread selections across the window.
+    pub fn record_ordering_latencies(
+        &mut self,
+        txs: &[crate::types::UserTx],
+        window_start_ms: u64,
+        batch_timeout_ms: u64,
+    ) {
+        let n = txs.len();
+        if n == 0 {
+            return;
+        }
+        for (idx, tx) in txs.iter().enumerate() {
+            // Spread selection times evenly across the window duration
+            let selected_at_ms = window_start_ms + (idx as u64 * batch_timeout_ms / n as u64);
+            let latency = selected_at_ms.saturating_sub(tx.arrival_ms);
+            self.ordering_latencies_ms.push(latency);
+        }
+    }
+
+    pub fn get_metrics(&self, max_blob_size: usize) -> Metrics {
         let total_possible_uncompressed_size = (self.total_blobs * max_blob_size) as f64;
 
         let avg_uncompressed_fill_rate = if total_possible_uncompressed_size > 0.0 {
@@ -62,26 +79,6 @@ impl MetricsCollector {
             0.0
         };
 
-        let avg_latency_ms = if !self.latencies.is_empty() {
-            self.latencies.iter().sum::<u64>() as f64 / self.latencies.len() as f64
-        } else {
-            0.0
-        };
-
-        let max_latency_ms = *self.latencies.iter().max().unwrap_or(&0);
-
-        let (p95_latency_ms, p99_latency_ms) = if !self.latencies.is_empty() {
-            self.latencies.sort_unstable();
-            let p95_index = (self.latencies.len() as f64 * 0.95).floor() as usize;
-            let p99_index = (self.latencies.len() as f64 * 0.99).floor() as usize;
-            (
-                self.latencies.get(p95_index.min(self.latencies.len() - 1)).cloned().unwrap_or(max_latency_ms),
-                self.latencies.get(p99_index.min(self.latencies.len() - 1)).cloned().unwrap_or(max_latency_ms),
-            )
-        } else {
-            (0, 0)
-        };
-
         let avg_compression_ratio = if self.total_compressed_size > 0 {
             self.total_uncompressed_size as f64 / self.total_compressed_size as f64
         } else {
@@ -93,10 +90,6 @@ impl MetricsCollector {
             total_blobs: self.total_blobs,
             avg_uncompressed_fill_rate,
             avg_compressed_fill_rate,
-            avg_latency_ms,
-            max_latency_ms,
-            p95_latency_ms,
-            p99_latency_ms,
             avg_compression_ratio,
         }
     }
@@ -109,10 +102,18 @@ impl MetricsCollector {
         println!("Avg Uncompressed Fill Rate: {:.2}%", metrics.avg_uncompressed_fill_rate * 100.0);
         println!("Avg Compressed Fill Rate: {:.2}%", metrics.avg_compressed_fill_rate * 100.0);
         println!("Avg Compression Ratio: {:.2}:1", metrics.avg_compression_ratio);
-        println!("Avg Latency: {:.2}ms", metrics.avg_latency_ms);
-        println!("P95 Latency: {}ms", metrics.p95_latency_ms);
-        println!("P99 Latency: {}ms", metrics.p99_latency_ms);
-        println!("Max Latency: {}ms", metrics.max_latency_ms);
+
+        if !self.ordering_latencies_ms.is_empty() {
+            let n = self.ordering_latencies_ms.len();
+            let avg = self.ordering_latencies_ms.iter().sum::<u64>() as f64 / n as f64;
+            let mut sorted = self.ordering_latencies_ms.clone();
+            sorted.sort_unstable();
+            let p95 = sorted[(n as f64 * 0.95) as usize].min(*sorted.last().unwrap());
+            let max = *sorted.last().unwrap();
+            println!("\n--- Ordering Latency (arrival → selected into blob) ---");
+            println!("  Avg: {:.0}ms  P95: {}ms  Max: {}ms", avg, p95, max);
+            println!("  (measures how long each tx waited before the ordering algo selected it)");
+        }
 
         if !self.inclusion_latencies_ms.is_empty() {
             let n = self.inclusion_latencies_ms.len();

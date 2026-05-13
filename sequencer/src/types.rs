@@ -78,9 +78,5 @@ pub struct Metrics {
     pub total_blobs: usize,
     pub avg_uncompressed_fill_rate: f64,
     pub avg_compressed_fill_rate: f64,
-    pub avg_latency_ms: f64,
-    pub max_latency_ms: u64,
-    pub p95_latency_ms: u64,
-    pub p99_latency_ms: u64,
     pub avg_compression_ratio: f64,
 }
