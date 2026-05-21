@@ -36,7 +36,7 @@ impl Default for SequencerConfig {
             des_beta:  std::env::var("DES_BETA").ok().and_then(|v| v.parse().ok()).unwrap_or(0.33),
             des_gamma: std::env::var("DES_GAMMA").ok().and_then(|v| v.parse().ok()).unwrap_or(0.34),
             max_blob_size: 128 * 1024, // 128KB
-            batch_timeout_ms: 60_000,
+            batch_timeout_ms: 600_000, // 10 minutes — time trigger is safety net, capacity trigger drives real behavior
             blob_submission_delay_ms: 2_000, // Deneb max 6 blobs/slot → 12,000ms/6
             eth_rpc_url: "http://localhost:8545".to_string(),
             sender_private_key: String::new(),

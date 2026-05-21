@@ -42,24 +42,15 @@ impl MetricsCollector {
         }
     }
 
-    /// Records ordering latency for each tx: time from tx arrival until it was
-    /// selected by the ordering algorithm and placed into a blob position.
-    /// selection_index is the tx's position in the ordered output (0 = selected first).
-    /// window_start_ms and batch_timeout_ms are used to spread selections across the window.
+    /// Records ordering latency for each tx: (seal_time_ms) - (tx.arrival_ms).
+    /// seal_time_ms is sim_clock_ms at the moment the trigger fired and the ordering ran.
     pub fn record_ordering_latencies(
         &mut self,
         txs: &[crate::types::UserTx],
-        window_start_ms: u64,
-        batch_timeout_ms: u64,
+        seal_time_ms: u64,
     ) {
-        let n = txs.len();
-        if n == 0 {
-            return;
-        }
-        for (idx, tx) in txs.iter().enumerate() {
-            // Spread selection times evenly across the window duration
-            let selected_at_ms = window_start_ms + (idx as u64 * batch_timeout_ms / n as u64);
-            let latency = selected_at_ms.saturating_sub(tx.arrival_ms);
+        for tx in txs.iter() {
+            let latency = seal_time_ms.saturating_sub(tx.arrival_ms);
             self.ordering_latencies_ms.push(latency);
         }
     }
