@@ -1,0 +1,27 @@
+blob=  0 trigger=capacity txs=1654 uncomp= 128.0KB (100.0%) comp=  80.8KB ( 63.1%) window=163.5s
+blob=  1 trigger=capacity txs=1602 uncomp= 128.0KB (100.0%) comp=  82.5KB ( 64.5%) window=379.2s
+blob=  2 trigger=capacity txs=1570 uncomp= 127.9KB (100.0%) comp=  84.0KB ( 65.6%) window=579.9s
+blob=  3 trigger=time    txs= 174 uncomp=  12.8KB ( 10.0%) comp=   8.2KB (  6.4%) window=600.0s
+
+=== Metrics Summary ===
+Total Txs: 5000
+Total Blobs: 4
+Avg Uncompressed Fill Rate: 77.49%
+Avg Compressed Fill Rate: 49.88%
+Avg Compression Ratio: 1.55:1
+
+--- Ordering Latency (arrival → selected into blob) ---
+  Avg: 97925ms  P95: 192991ms  Max: 215838ms
+  (measures how long each tx waited before the ordering algo selected it)
+
+--- Blob Inclusion Latency (on-chain) ---
+  Blobs submitted: 4
+  Avg: 3822ms  P50: 4238ms  Max: 5532ms
+
+--- Per-Blob Compression Distribution ---
+  Min: 1.52:1  Max: 1.58:1  StdDev: 0.024
+  <1.0:1       0 blobs (  0.0%)
+  1.0-1.5      0 blobs (  0.0%)
+  1.5-2.0      4 blobs (100.0%)
+  2.0-3.0      0 blobs (  0.0%)
+  >3.0:1       0 blobs (  0.0%)

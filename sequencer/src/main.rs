@@ -80,6 +80,8 @@ async fn main() -> Result<()> {
     let mut batch_start_ms: Option<u64> = None;
 
     let verbose = std::env::var("VERBOSE").unwrap_or_default() == "1";
+    let dry_run = std::env::var("DRY_RUN").unwrap_or_default() == "1";
+    let ordering_delay_ms: u64 = std::env::var("ORDERING_DELAY_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
     let mut submission_count = 0u64;
 
     // Dual-trigger event-driven loop.
@@ -120,7 +122,35 @@ async fn main() -> Result<()> {
             let batch_start = batch_start_ms.unwrap_or(sim_clock_ms);
             let actual_window_ms = sim_clock_ms.saturating_sub(batch_start).max(1);
 
+            // Optional deliberate delay: advance sim_clock before ordering to
+            // accumulate more txs in the mempool, giving DES a larger pool to score.
+            if ordering_delay_ms > 0 {
+                sim_clock_ms += ordering_delay_ms;
+                while next_pending < pending.len() && pending[next_pending].arrival_ms <= sim_clock_ms {
+                    let tx = pending[next_pending].clone();
+                    if batch_start_ms.is_none() {
+                        batch_start_ms = Some(tx.arrival_ms);
+                    }
+                    mempool.add_tx(tx);
+                    next_pending += 1;
+                }
+            }
+
+            let t0 = std::time::Instant::now();
             let ordered_txs = ordering_policy.order(mempool.get_all(), sim_clock_ms, submission_count as usize);
+            let algo_elapsed_ms = t0.elapsed().as_micros() as u64 / 1000;
+            sim_clock_ms += algo_elapsed_ms;
+
+            // Admit txs that arrived during the ordering algorithm's execution
+            while next_pending < pending.len() && pending[next_pending].arrival_ms <= sim_clock_ms {
+                let tx = pending[next_pending].clone();
+                if batch_start_ms.is_none() {
+                    batch_start_ms = Some(tx.arrival_ms);
+                }
+                mempool.add_tx(tx);
+                next_pending += 1;
+            }
+
             let batches = batcher.create_batches(ordered_txs)?;
 
             if capacity_fired {
@@ -129,12 +159,17 @@ async fn main() -> Result<()> {
                 let batch = &batches[0];
 
                 if verbose {
+                    let fill_pct = batch.total_size as f64 / config.max_blob_size as f64 * 100.0;
+                    let comp_pct = batch.compressed_size as f64 / config.max_blob_size as f64 * 100.0;
                     println!(
-                        "submission={} trigger=capacity window={:.1}s mempool_kb={:.1} submitting=1/{} blobs",
+                        "blob={:3} trigger=capacity txs={:4} uncomp={:6.1}KB ({:5.1}%) comp={:6.1}KB ({:5.1}%) window={:.1}s",
                         submission_count,
+                        batch.txs.len(),
+                        batch.total_size as f64 / 1024.0,
+                        fill_pct,
+                        batch.compressed_size as f64 / 1024.0,
+                        comp_pct,
                         actual_window_ms as f64 / 1000.0,
-                        mempool_size as f64 / 1024.0,
-                        batches.len(),
                     );
                 }
 
@@ -142,59 +177,59 @@ async fn main() -> Result<()> {
                 executor.execute_batch(&batch.txs)?;
                 metrics.record_batch(batch, config.max_blob_size);
 
-                match blob_sender.send_blob(batch).await {
-                    Ok((tx_hash, _)) => tracing::info!("Blob sent: {}", tx_hash),
-                    Err(e) => tracing::error!("Failed to send blob: {}", e),
+                if !dry_run {
+                    match blob_sender.send_blob(batch).await {
+                        Ok((tx_hash, _)) => tracing::info!("Blob sent: {}", tx_hash),
+                        Err(e) => tracing::error!("Failed to send blob: {}", e),
+                    }
                 }
 
                 let tx_ids: Vec<u64> = batch.txs.iter().map(|tx| tx.tx_id).collect();
                 mempool.remove_txs(&tx_ids);
 
-                // Snap to next 6s L1 slot boundary for simulated inclusion time.
+                // Record inclusion latency via slot boundary math, but do NOT advance
+                // sim_clock_ms — the ordering clock is driven purely by dataset arrival
+                // times so that ordering latency reflects mempool wait time only.
                 let slot_ms: u64 = 6_000; // devnet uses 6s slots (network_params.yaml: seconds_per_slot: 6)
                 let t_inclusion = ((sim_clock_ms + slot_ms) / slot_ms) * slot_ms;
                 metrics.record_inclusion(t_inclusion - sim_clock_ms);
-                sim_clock_ms = t_inclusion;
-
-                // Admit txs that arrived while the blob was being submitted.
-                while next_pending < pending.len() && pending[next_pending].arrival_ms <= sim_clock_ms {
-                    let tx = pending[next_pending].clone();
-                    if batch_start_ms.is_none() {
-                        batch_start_ms = Some(tx.arrival_ms);
-                    }
-                    mempool.add_tx(tx);
-                    next_pending += 1;
-                }
                 // Do NOT reset batch_start_ms — timer continues for remaining txs.
 
             } else {
                 // Time trigger: mempool didn't fill a full blob in time.
                 // Submit all remaining txs as a partial blob, then reset.
-                if verbose {
-                    println!(
-                        "submission={} trigger=time window={:.1}s mempool_kb={:.1} blobs={}",
-                        submission_count,
-                        actual_window_ms as f64 / 1000.0,
-                        mempool_size as f64 / 1024.0,
-                        batches.len(),
-                    );
-                }
-
                 let all_txs: Vec<_> = batches.iter().flat_map(|b| b.txs.iter().cloned()).collect();
                 metrics.record_ordering_latencies(&all_txs, sim_clock_ms);
                 executor.execute_batch(&all_txs)?;
 
-                // All blobs submitted at the same logical moment land in the same slot.
+                // Record inclusion latency via slot boundary math, but do NOT advance
+                // sim_clock_ms — ordering clock stays driven by dataset arrival times.
                 let slot_ms: u64 = 6_000; // devnet uses 6s slots (network_params.yaml: seconds_per_slot: 6)
                 let t_inclusion = ((sim_clock_ms + slot_ms) / slot_ms) * slot_ms;
                 let inclusion_latency_ms = t_inclusion - sim_clock_ms;
 
                 for batch in batches.iter() {
+                    if verbose {
+                        let fill_pct = batch.total_size as f64 / config.max_blob_size as f64 * 100.0;
+                        let comp_pct = batch.compressed_size as f64 / config.max_blob_size as f64 * 100.0;
+                        println!(
+                            "blob={:3} trigger=time    txs={:4} uncomp={:6.1}KB ({:5.1}%) comp={:6.1}KB ({:5.1}%) window={:.1}s",
+                            submission_count,
+                            batch.txs.len(),
+                            batch.total_size as f64 / 1024.0,
+                            fill_pct,
+                            batch.compressed_size as f64 / 1024.0,
+                            comp_pct,
+                            actual_window_ms as f64 / 1000.0,
+                        );
+                    }
                     metrics.record_batch(batch, config.max_blob_size);
 
-                    match blob_sender.send_blob(batch).await {
-                        Ok((tx_hash, _)) => tracing::info!("Blob sent: {}", tx_hash),
-                        Err(e) => tracing::error!("Failed to send blob: {}", e),
+                    if !dry_run {
+                        match blob_sender.send_blob(batch).await {
+                            Ok((tx_hash, _)) => tracing::info!("Blob sent: {}", tx_hash),
+                            Err(e) => tracing::error!("Failed to send blob: {}", e),
+                        }
                     }
 
                     let tx_ids: Vec<u64> = batch.txs.iter().map(|tx| tx.tx_id).collect();
@@ -202,17 +237,8 @@ async fn main() -> Result<()> {
                     metrics.record_inclusion(inclusion_latency_ms);
                 }
 
-                sim_clock_ms = t_inclusion;
-                // Reset timer, then admit txs that arrived during the slot window.
+                // Reset timer — restarts when the next tx arrives.
                 batch_start_ms = None;
-                while next_pending < pending.len() && pending[next_pending].arrival_ms <= sim_clock_ms {
-                    let tx = pending[next_pending].clone();
-                    if batch_start_ms.is_none() {
-                        batch_start_ms = Some(tx.arrival_ms);
-                    }
-                    mempool.add_tx(tx);
-                    next_pending += 1;
-                }
             }
 
             submission_count += 1;

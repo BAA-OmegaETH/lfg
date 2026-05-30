@@ -1,0 +1,71 @@
+DES Parameter Sweep Results — 2026-05-26
+Dataset: large_heavy.csv (5000 txs)
+DRY_RUN=1, no ordering delay
+
+========================================
+SWEEP 1: Fixed alpha=0.1, varying beta/gamma
+========================================
+
+alpha  beta  gamma  | Blobs | Uncomp Fill | Ordering Avg | Ordering Max
+-----------------------------------------------------------------------
+0.1    0.1   0.8    |  172  |   98.83%    |   2,541ms    |  10,291ms
+0.1    0.2   0.7    |  172  |   98.83%    |   2,516ms    |   9,906ms
+0.1    0.3   0.6    |  174  |   97.69%    |   2,485ms    |  10,511ms
+0.1    0.4   0.5    |  177  |   96.04%    |   2,379ms    |  15,801ms
+0.1    0.5   0.4    |  179  |   94.96%    |   2,303ms    |  20,304ms
+0.1    0.6   0.3    |  226  |   75.22%    |   2,011ms    |  18,176ms
+0.1    0.7   0.2    |  271  |   62.73%    |   1,920ms    |  14,673ms
+
+========================================
+SWEEP 2: Full alpha/beta/gamma sweep
+========================================
+
+alpha  beta  gamma  | Blobs | Uncomp Fill | Ordering Avg | Ordering Max
+-----------------------------------------------------------------------
+0.1    0.2   0.7    |  172  |   98.83%    |   2,516ms    |   9,906ms
+0.1    0.3   0.6    |  174  |   97.69%    |   2,485ms    |  10,511ms
+0.1    0.4   0.5    |  177  |   96.04%    |   2,379ms    |  15,801ms
+0.1    0.5   0.4    |  179  |   94.96%    |   2,303ms    |  20,304ms
+0.1    0.6   0.3    |  226  |   75.22%    |   2,011ms    |  18,176ms
+0.2    0.2   0.6    |  172  |   98.83%    |   2,561ms    |   8,976ms
+0.2    0.3   0.5    |  175  |   97.14%    |   2,459ms    |  10,496ms
+0.2    0.4   0.4    |  177  |   96.04%    |   2,360ms    |  14,764ms
+0.2    0.5   0.3    |  202  |   84.15%    |   2,072ms    |  14,749ms
+0.2    0.6   0.2    |  270  |   62.96%    |   1,923ms    |  14,673ms
+0.3    0.2   0.5    |  173  |   98.26%    |   2,536ms    |   9,318ms
+0.3    0.3   0.4    |  175  |   97.14%    |   2,430ms    |   9,739ms
+0.3    0.4   0.3    |  182  |   93.40%    |   2,179ms    |  11,311ms
+0.3    0.5   0.2    |  244  |   69.67%    |   2,003ms    |  13,134ms
+0.3    0.6   0.1    |  304  |   55.92%    |   1,911ms    |  13,256ms
+
+========================================
+BASELINE COMPARISON
+========================================
+
+Policy          | alpha  beta  gamma | Blobs | Uncomp Fill | Ordering Avg
+-------------------------------------------------------------------------
+FCFS            |   —     —     —   |  190  |   89.47%    |   2,115ms
+DES (default)   |  0.33  0.33  0.34 |  176  |   96.58%    |   2,336ms
+DES (optimal)   |  0.1   0.1   0.8  |  172  |   98.83%    |   2,541ms
+DES (optimal)   |  0.1   0.2   0.7  |  172  |   98.83%    |   2,516ms
+DES (optimal)   |  0.2   0.2   0.6  |  172  |   98.83%    |   2,561ms
+
+========================================
+KEY FINDINGS
+========================================
+
+1. gamma (fit_score) is the dominant driver of fill rate.
+   High gamma = better bin-packing at blob boundaries = fewer blobs.
+
+2. High beta (compress_score) destroys fill rate.
+   beta >= 0.5 causes severe degradation (172 → 200-300+ blobs).
+   compress_score alone selects by size without considering blob boundaries.
+
+3. Best configurations all share: gamma >= 0.6
+   Top performers: (0.1, 0.1, 0.8), (0.1, 0.2, 0.7), (0.2, 0.2, 0.6)
+
+4. Default weights (0.33, 0.33, 0.34) are suboptimal.
+   Optimal saves 4 more blobs and +2.25pp fill rate vs default DES.
+
+5. Latency tradeoff: higher gamma slightly increases ordering latency
+   (+200ms avg vs high-beta configs) but packing improvement is large.

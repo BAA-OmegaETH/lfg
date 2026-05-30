@@ -116,7 +116,7 @@ impl OrderingPolicy for DesOrdering {
             let best_fitting = queues
                 .iter()
                 .filter(|(_, q)| !q.is_empty())
-                .filter(|(_, q)| q[0].payload_size + current_batch_size <= self.max_blob_size)
+                // .filter(|(_, q)| q[0].payload_size + current_batch_size <= self.max_blob_size)
                 .max_by(|(_, qa), (_, qb)| {
                     let score_a = self.calculate_score(&qa[0], sim_clock_ms, current_batch_size);
                     let score_b = self.calculate_score(&qb[0], sim_clock_ms, current_batch_size);
@@ -139,7 +139,7 @@ impl OrderingPolicy for DesOrdering {
                 let best_for_new = queues
                     .iter()
                     .filter(|(_, q)| !q.is_empty())
-                    .filter(|(_, q)| q[0].payload_size <= self.max_blob_size)
+                    // .filter(|(_, q)| q[0].payload_size <= self.max_blob_size)
                     .max_by(|(_, qa), (_, qb)| {
                         let score_a = self.calculate_score(&qa[0], sim_clock_ms, 0);
                         let score_b = self.calculate_score(&qb[0], sim_clock_ms, 0);
